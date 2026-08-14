@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GameBoard from '@/components/GameBoard';
 
 export interface GameQuestion {
@@ -12,13 +12,33 @@ export interface GameQuestion {
 
 export default function Home() {
   const [gameState, setGameState] = useState<'setup' | 'playing'>('setup');
-  const [questions, setQuestions] = useState<GameQuestion[]>([]);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+  
+  const [questions, setQuestions] = useState<GameQuestion[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('snake_game_questions');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { /* fallback */ }
+      }
+    }
+    return [];
+  });
   
   const [topic, setTopic] = useState('Interest');
   const [questionText, setQuestionText] = useState('');
   const [correctAnswer, setCorrectAnswer] = useState('');
 
-  // Handle manual question addition
+  // Ensures client-only rendering elements match hydration cleanly
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isMounted) {
+      localStorage.setItem('snake_game_questions', JSON.stringify(questions));
+    }
+  }, [questions, isMounted]);
+
   const handleAddQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!questionText.trim() || !correctAnswer.trim()) return;
@@ -45,7 +65,6 @@ export default function Home() {
         const content = event.target?.result as string;
         
         if (file.name.endsWith('.json')) {
-          // Parse JSON file
           const parsedData = JSON.parse(content);
           if (Array.isArray(parsedData)) {
             const formattedQuestions: GameQuestion[] = parsedData.map((q, index) => ({
@@ -59,12 +78,11 @@ export default function Home() {
             alert('Invalid JSON format. Expected an array of questions.');
           }
         } else if (file.name.endsWith('.txt')) {
-          // Parse TXT file (Format: Topic | Question | Answer)
           const lines = content.split('\n');
           const parsedQuestions: GameQuestion[] = [];
 
           lines.forEach((line, index) => {
-            if (!line.trim()) return; // Skip empty lines
+            if (!line.trim()) return;
             const parts = line.split('|');
             if (parts.length >= 3) {
               parsedQuestions.push({
@@ -89,10 +107,23 @@ export default function Home() {
     reader.readAsText(file);
   };
 
-  // Handle deleting a question from the list
   const handleDeleteQuestion = (id: number) => {
     setQuestions(questions.filter((q) => q.id !== id));
   };
+
+  const handleClearAllQuestions = () => {
+    if (confirm('Are you sure you want to clear all registered questions?')) {
+      setQuestions([]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('snake_game_questions');
+      }
+    }
+  };
+
+  // Prevent server/client render discrepancy during hydration step
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-black p-6 md:p-12 font-sans text-zinc-900 dark:text-zinc-100 flex flex-col items-center">
@@ -173,7 +204,18 @@ export default function Home() {
             </form>
 
             <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
-              <h3 className="font-medium mb-3">Registered Questions ({questions.length})</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium">Registered Questions ({questions.length})</h3>
+                {questions.length > 0 && (
+                  <button
+                    onClick={handleClearAllQuestions}
+                    className="text-xs px-3 py-1 bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 hover:bg-red-200 rounded-md font-semibold transition-colors cursor-pointer"
+                  >
+                    Clear All Questions 🗑️
+                  </button>
+                )}
+              </div>
+
               {questions.length === 0 ? (
                 <p className="text-sm text-zinc-400 italic">No questions added yet. Upload a text file or add items manually to start!</p>
               ) : (
