@@ -13,7 +13,7 @@ interface ColorOption {
   hex: string;
 }
 
-interface Question {
+export interface Question {
   id: string;
   question: string;
   options: string[];
@@ -265,33 +265,28 @@ export default function ColorGamePage() {
       counter++;
       if (counter >= 12) {
         clearInterval(interval);
-        evaluateRiggedRoll(); // Dito natin tinawag yung dinayang roll function!
+        evaluateRiggedRoll();
       }
     }, 100);
   };
 
-  // 🎲 RIGGED / DINAYANG ROLL LOGIC (Pabor sa Bangkero / Lamang ang Talo)
+  // 🎲 RIGGED / DINAYANG ROLL LOGIC (Lamang ang Bangkero)
   const evaluateRiggedRoll = () => {
     const otherColors = COLORS.filter((c) => c.id !== selectedColor);
     const finalDice: ColorId[] = [];
 
-    // Gagawin nating ~70-80% na pagkakataon na walang tatama sa napili ng player
-    // Pipili tayo ng 3 dice mula sa mga IBANG kulay, maliban na lang kung paboran ng sistema (15% chance na manalo para di halata)
-    const forceWin = Math.random() < 0.15; // 15% lang ang swerte
+    const forceWin = Math.random() < 0.15; // 15% chance na manalo
 
     if (forceWin) {
-      // 1 dice ay tatama sa pinili ng player para may panalo pa rin paminsan-minsan
       finalDice.push(selectedColor!);
       finalDice.push(otherColors[Math.floor(Math.random() * otherColors.length)].id);
       finalDice.push(otherColors[Math.floor(Math.random() * otherColors.length)].id);
     } else {
-      // Puros iba ang lalabas -> Talo guaranteed!
       finalDice.push(otherColors[Math.floor(Math.random() * otherColors.length)].id);
       finalDice.push(otherColors[Math.floor(Math.random() * otherColors.length)].id);
       finalDice.push(otherColors[Math.floor(Math.random() * otherColors.length)].id);
     }
 
-    // Shuffle natin ang 3 dice para mukhang random
     finalDice.sort(() => Math.random() - 0.5);
     setDiceResults(finalDice);
 
@@ -378,7 +373,7 @@ export default function ColorGamePage() {
       {phase === 'SETUP' && (
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
           <h1 className="text-3xl font-extrabold text-amber-400 text-center mb-1 uppercase tracking-wider">
-             Color Game 
+            🎪 Color Game 🎪
           </h1>
           <p className="text-slate-400 text-center text-xs mb-6">(Rigged Mode: Lamang ang Bangkero 😈)</p>
 

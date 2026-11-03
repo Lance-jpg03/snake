@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GameQuestion } from '@/app/page';
+import { Question } from '@/app/page';
 
 interface GameBoardProps {
-  questions: GameQuestion[];
+  questions: Question[];
   onBackToSetup: () => void;
 }
 
@@ -26,9 +26,6 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
     return [
       { id: 1, name: 'Player 1', position: 1, color: 'bg-red-500' },
       { id: 2, name: 'Player 2', position: 1, color: 'bg-blue-500' },
-      { id: 3, name: 'Player 3', position: 1, color: 'bg-emerald-500' },
-      { id: 4, name: 'Player 4', position: 1, color: 'bg-amber-500' },
-
     ];
   });
 
@@ -56,7 +53,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
     return "Player 1's turn. Roll the dice!";
   });
 
-  const [activeQuestion, setActiveQuestion] = useState<GameQuestion | null>(() => {
+  const [activeQuestion, setActiveQuestion] = useState<Question | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('snake_active_question');
       if (saved) {
@@ -76,7 +73,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
     return null;
   });
 
-  const [userAnswer, setUserAnswer] = useState<string>('');
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
 
   // Save state changes automatically to localStorage
   useEffect(() => {
@@ -95,7 +92,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
     17: 7, 35: 5, 48: 26, 54: 34, 62: 19, 75: 53, 87: 24, 93: 73, 99: 78 
   };
 
-  const questionCells: { [cellNum: number]: GameQuestion } = {};
+  const questionCells: { [cellNum: number]: Question } = {};
   if (questions.length > 0) {
     const step = Math.floor(90 / questions.length) || 1;
     questions.forEach((q, index) => {
@@ -123,7 +120,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
 
     updatePlayerPosition(currentPlayer.id, nextPos);
 
-    if (nextPos === 100) return; // Stop turn rotation if someone wins
+    if (nextPos === 100) return;
 
     if (ladders[nextPos]) {
       setMessage(`${currentPlayer.name} landed on a Ladder at ${nextPos}! Answer correctly to climb.`);
@@ -159,9 +156,9 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
 
   const handleAnswerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeQuestion) return;
+    if (!activeQuestion || selectedOption === null) return;
 
-    const isCorrect = userAnswer.trim().toLowerCase() === activeQuestion.correctAnswer.trim().toLowerCase();
+    const isCorrect = selectedOption === activeQuestion.correctAnswer;
     const pos = currentPlayer.position;
 
     if (isCorrect) {
@@ -172,7 +169,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
           setWinner(currentPlayer);
           setMessage(`Correct! 🎉 ${currentPlayer.name} climbs the ladder to 100 and WINS!`);
           setActiveQuestion(null);
-          setUserAnswer('');
+          setSelectedOption(null);
           return;
         }
         updatePlayerPosition(currentPlayer.id, climbTo);
@@ -185,7 +182,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
     }
 
     setActiveQuestion(null);
-    setUserAnswer('');
+    setSelectedOption(null);
     nextTurn();
   };
 
@@ -221,13 +218,12 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
         >
           ← Return to GM Setup
         </button>
-        <h2 className="text-xl font-bold">🐍 6-Player Board (Victory Check Active)</h2>
+        <h2 className="text-xl font-bold">🐍 Board Game (Victory Check Active)</h2>
         <span className="text-sm font-semibold px-3 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 rounded-full">
           {winner ? '🏆 Game Over' : `Turn: ${currentPlayer.name}`}
         </span>
       </div>
 
-      {/* Winner Banner Notification */}
       {winner && (
         <div className="w-full bg-amber-500 text-black p-4 rounded-2xl text-center font-bold text-lg shadow-lg animate-bounce flex items-center justify-center gap-3">
           <span>🎉 CONGRATULATIONS {winner.name.toUpperCase()}! YOU REACHED TILE 100 AND WON THE GAME! 🏆</span>
@@ -241,7 +237,6 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-        
         {/* Board Grid */}
         <div className="md:col-span-2 grid grid-cols-10 gap-1 bg-zinc-200 dark:bg-zinc-800 p-3 rounded-2xl aspect-square shadow-inner relative">
           {boardCells.map((cellNum) => {
@@ -262,7 +257,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
                     ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-400/30'
                     : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
                 }`}
-                title={hasQuestion ? `Question: ${hasQuestion.questionText}` : undefined}
+                title={hasQuestion ? `Question: ${hasQuestion.question}` : undefined}
               >
                 <span className="absolute top-1 left-1 text-[9px] opacity-60">{cellNum}</span>
                 {isLadder && <span className="text-[10px]">🪜</span>}
@@ -310,22 +305,35 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
             )}
 
             {activeQuestion && !winner && (
-              <form onSubmit={handleAnswerSubmit} className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl animate-pulse">
+              <form onSubmit={handleAnswerSubmit} className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl">
                 <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
-                  ⚠️ {currentPlayer.name}&apos;s Challenge [{activeQuestion.topic}]
+                  ⚠️ {currentPlayer.name}&apos;s Challenge
                 </span>
-                <p className="font-medium text-sm my-2">{activeQuestion.questionText}</p>
-                <input
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Type exact answer..."
-                  autoFocus
-                  className="w-full p-2 text-sm rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900 mb-3"
-                />
+                <p className="font-medium text-sm my-2">{activeQuestion.question}</p>
+                
+                <div className="flex flex-col gap-2 mb-3">
+                  {activeQuestion.options.map((opt, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => setSelectedOption(idx)}
+                      className={`p-2 text-left text-xs rounded-lg border transition-colors cursor-pointer ${
+                        selectedOption === idx 
+                          ? 'bg-amber-600 text-white border-amber-600' 
+                          : 'bg-white dark:bg-zinc-800 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span> {opt}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                  disabled={selectedOption === null}
+                  className={`w-full py-2 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer ${
+                    selectedOption !== null ? 'bg-amber-600 hover:bg-amber-700' : 'bg-zinc-400 cursor-not-allowed'
+                  }`}
                 >
                   Submit Answer
                 </button>
@@ -345,9 +353,7 @@ export default function GameBoard({ questions, onBackToSetup }: GameBoardProps) 
               ))}
             </div>
           </div>
-
         </div>
-
       </div>
     </div>
   );
